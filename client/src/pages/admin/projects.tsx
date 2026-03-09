@@ -1,52 +1,58 @@
-import { Globe, Lock } from 'lucide-react'
-
-const mockProjects = [
-  { id: '1', name: 'EconomyPlus', owner: 'craftmaster', isPublic: true, software: 'Paper', createdAt: '2026-02-15' },
-  { id: '2', name: 'CustomEnchants', owner: 'enchanter', isPublic: false, software: 'Spigot', createdAt: '2026-02-20' },
-  { id: '3', name: 'MobArena', owner: 'arenadev', isPublic: true, software: 'Paper', createdAt: '2026-03-01' },
-  { id: '4', name: 'TeleportPlus', owner: 'tpmaster', isPublic: true, software: 'Paper', createdAt: '2026-03-05' },
-]
+import { Loader2 } from 'lucide-react'
+import { useAdminProjects } from '@/hooks/use-admin'
 
 export default function AdminProjectsPage() {
+  const { projects, isLoading } = useAdminProjects()
+
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight text-text">Projects</h1>
       <p className="mt-1 text-sm text-text-muted">View and manage all projects on the platform</p>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-surface">
-              <th className="px-4 py-3 text-left font-medium text-text-muted">Name</th>
-              <th className="px-4 py-3 text-left font-medium text-text-muted">Owner</th>
-              <th className="px-4 py-3 text-left font-medium text-text-muted">Visibility</th>
-              <th className="px-4 py-3 text-left font-medium text-text-muted">Software</th>
-              <th className="px-4 py-3 text-left font-medium text-text-muted">Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockProjects.map((project) => (
-              <tr key={project.id} className="border-b border-border last:border-0 hover:bg-surface-hover">
-                <td className="px-4 py-3 font-medium text-text">{project.name}</td>
-                <td className="px-4 py-3 text-text-muted">{project.owner}</td>
-                <td className="px-4 py-3">
-                  {project.isPublic ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                      <Globe className="h-3 w-3" /> Public
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-text-muted">
-                      <Lock className="h-3 w-3" /> Private
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-text-muted">{project.software}</td>
-                <td className="px-4 py-3 text-text-dim">{project.createdAt}</td>
+      {isLoading ? (
+        <div className="mt-6 flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-text-dim" />
+        </div>
+      ) : projects.length === 0 ? (
+        <div className="mt-6 text-center py-12">
+          <p className="text-sm text-text-dim">No projects found</p>
+        </div>
+      ) : (
+        <div className="mt-6 overflow-hidden rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-surface">
+                <th className="px-4 py-3 text-left font-medium text-text-muted">Name</th>
+                <th className="px-4 py-3 text-left font-medium text-text-muted">Owner</th>
+                <th className="px-4 py-3 text-left font-medium text-text-muted">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-text-muted">Software</th>
+                <th className="px-4 py-3 text-left font-medium text-text-muted">Created</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {projects.map((project) => (
+                <tr key={project.id} className="border-b border-border last:border-0 hover:bg-surface-hover">
+                  <td className="px-4 py-3 font-medium text-text">{project.name}</td>
+                  <td className="px-4 py-3 text-text-muted">{project.ownerUsername ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${
+                      project.status === 'active'
+                        ? 'bg-success/10 text-success'
+                        : 'bg-accent text-text-muted'
+                    }`}>
+                      {project.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-text-muted">{project.software}</td>
+                  <td className="px-4 py-3 text-text-dim">
+                    {new Date(project.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

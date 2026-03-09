@@ -9,6 +9,7 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(16),
   COOKIE_DOMAIN: z.string().default('localhost'),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
+  OPENCODE_URL: z.string().default('http://localhost:4096'),
 })
 
 export const env = envSchema.parse(process.env)

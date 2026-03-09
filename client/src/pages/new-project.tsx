@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useProjects } from '@/hooks/use-projects'
 
 const steps = ['Project Info', 'Platform', 'Build Config', 'Source']
 
@@ -21,7 +22,9 @@ const compilers = [
 
 export default function NewProjectPage() {
   const navigate = useNavigate()
+  const { createProject, isCreating } = useProjects()
   const [step, setStep] = useState(0)
+  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({
     name: '',
     software: 'paper',
@@ -41,9 +44,23 @@ export default function NewProjectPage() {
     }
   }
 
-  const handleCreate = () => {
-    // In a real app, this would POST to the API
-    navigate('/dashboard')
+  const handleCreate = async () => {
+    setError(null)
+    try {
+      const project = await createProject({
+        name: form.name.trim(),
+        software: form.software,
+        language: form.language,
+        javaVersion: form.javaVersion,
+        compiler: form.compiler as 'maven' | 'gradle',
+      })
+      navigate(`/workspace/${project.id}`)
+    } catch (err: unknown) {
+      const message = err !== null && typeof err === 'object' && 'message' in err
+        ? String(err.message)
+        : 'Failed to create project'
+      setError(message)
+    }
   }
 
   return (
@@ -256,6 +273,12 @@ export default function NewProjectPage() {
         )}
       </div>
 
+      {error && (
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="mt-6 flex items-center justify-between">
         <button
@@ -278,10 +301,10 @@ export default function NewProjectPage() {
         ) : (
           <button
             onClick={handleCreate}
-            disabled={!canProceed()}
+            disabled={!canProceed() || isCreating}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
           >
-            Create Project
+            {isCreating ? 'Creating...' : 'Create Project'}
           </button>
         )}
       </div>

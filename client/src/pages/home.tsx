@@ -1,36 +1,36 @@
 import { Link } from 'react-router'
-import { Blocks, Sparkles, Shield, Zap, Code2, Globe, ArrowRight } from 'lucide-react'
+import { Blocks, Sparkles, Shield, Puzzle, Code2, FolderKanban, ArrowRight } from 'lucide-react'
 
 const features = [
   {
     icon: Sparkles,
-    title: 'AI-Powered Development',
-    description: 'Describe your plugin idea and let AI generate production-ready code with best practices built in.',
+    title: 'AI Chat Workspace',
+    description: 'A built-in chat workspace for planning your plugins, ready to connect to AI providers for code generation.',
   },
   {
-    icon: Code2,
-    title: 'Intelligent Code Editor',
-    description: 'Full-featured Monaco editor with AI-assisted completions, refactoring, and real-time error detection.',
-  },
-  {
-    icon: Zap,
-    title: 'Instant Compilation',
-    description: 'One-click compilation with automatic dependency resolution. Test your plugin in seconds.',
-  },
-  {
-    icon: Shield,
-    title: 'Isolated Workspaces',
-    description: 'Each project runs in its own secure environment with dedicated resources and file isolation.',
-  },
-  {
-    icon: Globe,
-    title: 'Community Sharing',
-    description: 'Share your plugins with the community. Browse, fork, and collaborate on public projects.',
+    icon: FolderKanban,
+    title: 'Project Management',
+    description: 'Create, organize, and manage your plugin projects with a clean dashboard, search, and sorting.',
   },
   {
     icon: Blocks,
     title: 'Multi-Platform Support',
-    description: 'Build for Paper, Spigot, Bukkit, and more. Support for Java and Kotlin with Maven or Gradle.',
+    description: 'Configure projects for Paper, Spigot, Bukkit, Velocity, and more. Choose Java or Kotlin with Maven or Gradle.',
+  },
+  {
+    icon: Code2,
+    title: 'Developer-First UI',
+    description: 'A clean, dark-mode interface designed for developers. Minimal clutter, fast interactions, professional aesthetics.',
+  },
+  {
+    icon: Shield,
+    title: 'Secure Authentication',
+    description: 'Industry-standard security with Argon2 password hashing, session-based auth, and role-based access control.',
+  },
+  {
+    icon: Puzzle,
+    title: 'Extensible Architecture',
+    description: 'Built with a modular bridge system designed for AI code generation, compilation, and third-party integrations.',
   },
 ]
 
@@ -53,8 +53,8 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="mt-6 text-lg text-text-muted sm:text-xl">
-              AuroraCraft is the modern platform for creating Minecraft plugins.
-              Describe your idea, and our AI agent builds, tests, and compiles it for you.
+              AuroraCraft is a modern platform for creating Minecraft plugins.
+              Manage your projects, configure your stack, and chat with an AI assistant to plan and develop your plugins.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
@@ -80,10 +80,10 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight text-text">
-              Everything you need to build plugins
+              A solid foundation for plugin development
             </h2>
             <p className="mt-4 text-text-muted">
-              From idea to compiled JAR, AuroraCraft handles the entire development workflow.
+              Project management, AI assistance, and a modern workspace — with more features on the way.
             </p>
           </div>
           <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -110,10 +110,10 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 py-24 sm:px-6">
           <div className="rounded-2xl border border-border bg-gradient-to-br from-surface to-surface-hover p-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-text">
-              Ready to build your first plugin?
+              Ready to get started?
             </h2>
             <p className="mt-4 text-text-muted">
-              Join developers who are building Minecraft plugins faster with AI.
+              Create a free account and start managing your Minecraft plugin projects.
             </p>
             <Link
               to="/register"

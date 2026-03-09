@@ -19,14 +19,14 @@ export function useAuth() {
   const { setUser, logout: clearAuth } = useAuthStore()
   const queryClient = useQueryClient()
 
-  const { data: user, isLoading, isError } = useQuery({
+  const { data: user, isLoading } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: async () => {
       try {
         return await api.get<User>('/auth/me')
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If it's a 401 Not Authenticated, we just want to return null to avoid query errors
-        if (error.statusCode === 401) {
+        if (error !== null && typeof error === 'object' && 'statusCode' in error && error.statusCode === 401) {
           return null
         }
         throw error

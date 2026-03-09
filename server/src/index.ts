@@ -5,8 +5,12 @@ import { fileURLToPath } from 'url'
 import { env } from './env.js'
 import corsPlugin from './plugins/cors.js'
 import cookiePlugin from './plugins/cookie.js'
+import websocketPlugin from './plugins/websocket.js'
 import { authRoutes } from './routes/auth.js'
 import { healthRoutes } from './routes/health.js'
+import { projectRoutes } from './routes/projects.js'
+import { agentRoutes } from './routes/agents.js'
+import { adminRoutes } from './routes/admin.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -22,17 +26,21 @@ const app = Fastify({
 // Plugins
 await app.register(corsPlugin)
 await app.register(cookiePlugin)
+await app.register(websocketPlugin)
 
 // Routes
 await app.register(authRoutes)
 await app.register(healthRoutes)
+await app.register(projectRoutes)
+await app.register(agentRoutes)
+await app.register(adminRoutes)
 
 // Serve built client in production
 const clientDist = path.resolve(__dirname, '../../client/dist')
 await app.register(fastifyStatic, {
   root: clientDist,
   prefix: '/',
-  wildcard: false,
+  wildcard: true,
 })
 
 // SPA fallback — serve index.html for non-API routes

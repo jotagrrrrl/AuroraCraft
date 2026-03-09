@@ -33,20 +33,22 @@ export default function DocsPage() {
         <p className="mt-4 text-text-muted">
           Everything you need to know about building plugins with AuroraCraft.
         </p>
+        <p className="mt-2 text-sm text-text-dim">
+          Documentation is being written and will be available soon.
+        </p>
       </div>
 
       <div className="mt-16 grid gap-6 sm:grid-cols-2">
         {sections.map((section) => (
           <div
             key={section.title}
-            className="rounded-xl border border-border bg-surface p-6 transition-colors hover:border-border-bright hover:bg-surface-hover"
+            className="rounded-xl border border-border bg-surface p-6 opacity-60"
           >
             <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-2.5">
               <section.icon className="h-5 w-5 text-primary" />
             </div>
             <h3 className="text-base font-semibold text-text">{section.title}</h3>
             <p className="mt-2 text-sm text-text-muted">{section.description}</p>
-            <p className="mt-4 text-xs text-text-dim">Coming soon</p>
           </div>
         ))}
       </div>

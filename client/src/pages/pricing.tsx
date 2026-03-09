@@ -1,4 +1,5 @@
 import { Check } from 'lucide-react'
+import { Link } from 'react-router'
 
 const tiers = [
   {
@@ -7,12 +8,12 @@ const tiers = [
     period: 'forever',
     description: 'Perfect for getting started with plugin development.',
     features: [
-      'Up to 3 projects',
-      'Basic AI assistance',
-      'Community support',
-      'Public projects only',
+      'Unlimited projects',
+      'AI chat workspace',
+      'Project workspace',
     ],
     cta: 'Get Started',
+    href: '/register',
     highlighted: false,
   },
   {
@@ -28,7 +29,8 @@ const tiers = [
       'Priority support',
       'GitHub integration',
     ],
-    cta: 'Upgrade to Pro',
+    cta: 'Coming Soon',
+    href: null,
     highlighted: true,
   },
   {
@@ -44,7 +46,8 @@ const tiers = [
       'API access',
       'Custom AI models',
     ],
-    cta: 'Contact Sales',
+    cta: 'Coming Soon',
+    href: null,
     highlighted: false,
   },
 ]
@@ -84,15 +87,25 @@ export default function PricingPage() {
               <span className="text-sm text-text-dim">/{tier.period}</span>
             </div>
             <p className="mt-4 text-sm text-text-muted">{tier.description}</p>
-            <button
-              className={`mt-6 w-full rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-                tier.highlighted
-                  ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
-                  : 'border border-border bg-surface-hover text-text hover:bg-accent'
-              }`}
-            >
-              {tier.cta}
-            </button>
+            {tier.href ? (
+              <Link
+                to={tier.href}
+                className={`mt-6 block w-full rounded-lg px-4 py-2.5 text-center text-sm font-medium transition-colors ${
+                  tier.highlighted
+                    ? 'bg-primary text-primary-foreground hover:bg-primary-hover'
+                    : 'border border-border bg-surface-hover text-text hover:bg-accent'
+                }`}
+              >
+                {tier.cta}
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="mt-6 w-full rounded-lg border border-border bg-surface-hover px-4 py-2.5 text-sm font-medium text-text-dim opacity-60"
+              >
+                {tier.cta}
+              </button>
+            )}
             <ul className="mt-8 space-y-3">
               {tier.features.map((feature) => (
                 <li key={feature} className="flex items-center gap-3 text-sm text-text-muted">

@@ -16,13 +16,16 @@ export const api = {
     try {
       const response = await apiClient.get<T>(path)
       return response.data
-    } catch (error: any) {
-      if (error.response?.status === 204) return undefined as T
-      const apiError: ApiError = {
-        message: error.response?.data?.message || 'An unexpected error occurred',
-        statusCode: error.response?.status || 500,
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 204) return undefined as T
+        const apiError: ApiError = {
+          message: error.response?.data?.message || 'An unexpected error occurred',
+          statusCode: error.response?.status || 500,
+        }
+        throw apiError
       }
-      throw apiError
+      throw error
     }
   },
 
@@ -30,13 +33,16 @@ export const api = {
     try {
       const response = await apiClient.post<T>(path, body)
       return response.data
-    } catch (error: any) {
-      if (error.response?.status === 204) return undefined as T
-      const apiError: ApiError = {
-        message: error.response?.data?.message || 'An unexpected error occurred',
-        statusCode: error.response?.status || 500,
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 204) return undefined as T
+        const apiError: ApiError = {
+          message: error.response?.data?.message || 'An unexpected error occurred',
+          statusCode: error.response?.status || 500,
+        }
+        throw apiError
       }
-      throw apiError
+      throw error
     }
   },
 
@@ -44,13 +50,33 @@ export const api = {
     try {
       const response = await apiClient.put<T>(path, body)
       return response.data
-    } catch (error: any) {
-      if (error.response?.status === 204) return undefined as T
-      const apiError: ApiError = {
-        message: error.response?.data?.message || 'An unexpected error occurred',
-        statusCode: error.response?.status || 500,
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 204) return undefined as T
+        const apiError: ApiError = {
+          message: error.response?.data?.message || 'An unexpected error occurred',
+          statusCode: error.response?.status || 500,
+        }
+        throw apiError
       }
-      throw apiError
+      throw error
+    }
+  },
+
+  patch: async <T>(path: string, body?: unknown): Promise<T> => {
+    try {
+      const response = await apiClient.patch<T>(path, body)
+      return response.data
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 204) return undefined as T
+        const apiError: ApiError = {
+          message: error.response?.data?.message || 'An unexpected error occurred',
+          statusCode: error.response?.status || 500,
+        }
+        throw apiError
+      }
+      throw error
     }
   },
 
@@ -58,13 +84,16 @@ export const api = {
     try {
       const response = await apiClient.delete<T>(path)
       return response.data
-    } catch (error: any) {
-      if (error.response?.status === 204) return undefined as T
-      const apiError: ApiError = {
-        message: error.response?.data?.message || 'An unexpected error occurred',
-        statusCode: error.response?.status || 500,
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 204) return undefined as T
+        const apiError: ApiError = {
+          message: error.response?.data?.message || 'An unexpected error occurred',
+          statusCode: error.response?.status || 500,
+        }
+        throw apiError
       }
-      throw apiError
+      throw error
     }
   },
 }

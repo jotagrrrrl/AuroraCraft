@@ -1,101 +1,474 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Link, useParams } from 'react-router'
 import {
   ArrowLeft,
-  ChevronRight,
-  ChevronDown,
   File,
-  Folder,
+  FilePlus2,
+  FilePenLine,
+  FileX2,
+  FileSymlink,
+  FolderOpen,
   Play,
-  Globe,
-  Lock,
   Settings,
   Send,
   MessageSquare,
+  Bot,
+  User,
+  Loader2,
+  AlertCircle,
+  Brain,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle2,
+  Circle,
+  ListTodo,
+  Cpu,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useProject } from '@/hooks/use-projects'
+import { useAgentSessions, useAgentSession } from '@/hooks/use-agent'
+import { AI_MODELS, DEFAULT_MODEL_ID } from '@/types'
+import type { AgentMessage, MessagePart, TodoItem } from '@/types'
 
-interface FileNode {
-  name: string
-  type: 'file' | 'folder'
-  children?: FileNode[]
-}
+function FileOpBadge({ part }: { part: Extract<MessagePart, { type: 'file' }> }) {
+  const actionConfigs: Record<string, { icon: typeof File; label: string; color: string }> = {
+    create: { icon: FilePlus2, label: 'Created', color: 'text-success bg-success/10 border-success/20' },
+    update: { icon: FilePenLine, label: 'Updated', color: 'text-primary bg-primary/10 border-primary/20' },
+    delete: { icon: FileX2, label: 'Deleted', color: 'text-destructive bg-destructive/10 border-destructive/20' },
+    rename: { icon: FileSymlink, label: 'Renamed', color: 'text-warning bg-warning/10 border-warning/20' },
+  }
+  const config = actionConfigs[part.action] ?? { icon: File, label: 'Modified', color: 'text-text-muted bg-surface-hover border-border' }
 
-const mockFileTree: FileNode[] = [
-  {
-    name: 'src',
-    type: 'folder',
-    children: [
-      {
-        name: 'main',
-        type: 'folder',
-        children: [
-          {
-            name: 'java',
-            type: 'folder',
-            children: [
-              {
-                name: 'com.example.plugin',
-                type: 'folder',
-                children: [
-                  { name: 'Main.java', type: 'file' },
-                  { name: 'CommandHandler.java', type: 'file' },
-                  { name: 'EventListener.java', type: 'file' },
-                ],
-              },
-            ],
-          },
-          {
-            name: 'resources',
-            type: 'folder',
-            children: [
-              { name: 'plugin.yml', type: 'file' },
-              { name: 'config.yml', type: 'file' },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-  { name: 'pom.xml', type: 'file' },
-  { name: 'README.md', type: 'file' },
-]
-
-function FileTreeNode({ node, depth = 0 }: { node: FileNode; depth?: number }) {
-  const [open, setOpen] = useState(depth < 3)
+  const Icon = config.icon
+  const filename = part.path.split('/').pop() ?? part.path
 
   return (
-    <div>
+    <div className={cn('inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs', config.color)}>
+      <Icon className="h-3 w-3" />
+      <span className="font-medium">{config.label}</span>
+      <span className="opacity-75" title={part.path}>{filename}</span>
+      {part.action === 'rename' && part.newPath && (
+        <span className="opacity-75">→ {part.newPath.split('/').pop()}</span>
+      )}
+    </div>
+  )
+}
+
+function ThinkingBadge({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="rounded-lg border border-border bg-surface">
       <button
-        onClick={() => node.type === 'folder' && setOpen(!open)}
-        className={cn(
-          'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left text-xs transition-colors hover:bg-surface-hover',
-          node.type === 'file' ? 'text-text-muted' : 'text-text'
-        )}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-muted hover:text-text"
       >
-        {node.type === 'folder' ? (
-          open ? <ChevronDown className="h-3 w-3 shrink-0 text-text-dim" /> : <ChevronRight className="h-3 w-3 shrink-0 text-text-dim" />
-        ) : (
-          <span className="w-3" />
-        )}
-        {node.type === 'folder' ? (
-          <Folder className="h-3.5 w-3.5 shrink-0 text-primary/70" />
-        ) : (
-          <File className="h-3.5 w-3.5 shrink-0 text-text-dim" />
-        )}
-        <span className="truncate">{node.name}</span>
+        <Brain className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium">Thinking</span>
+        {expanded ? <ChevronDown className="ml-auto h-3 w-3" /> : <ChevronRight className="ml-auto h-3 w-3" />}
       </button>
-      {node.type === 'folder' && open && node.children?.map((child) => (
-        <FileTreeNode key={child.name} node={child} depth={depth + 1} />
+      {expanded && (
+        <div className="border-t border-border px-3 py-2">
+          <p className="whitespace-pre-wrap text-xs text-text-dim">{content}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TodoListBadge({ items }: { items: TodoItem[] }) {
+  const allDone = items.length > 0 && items.every((i) => i.status === 'completed')
+  const [expanded, setExpanded] = useState(!allDone)
+
+  if (allDone && !expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="inline-flex items-center gap-1.5 rounded-md border border-success/20 bg-success/10 px-2 py-1 text-xs text-success"
+      >
+        <CheckCircle2 className="h-3 w-3" />
+        <span className="font-medium">{items.length} tasks completed</span>
+        <ChevronRight className="ml-1 h-3 w-3" />
+      </button>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-surface">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-text-muted hover:text-text"
+      >
+        <ListTodo className="h-3.5 w-3.5 text-primary" />
+        <span className="font-medium">Tasks ({items.filter((i) => i.status === 'completed').length}/{items.length})</span>
+        {expanded ? <ChevronDown className="ml-auto h-3 w-3" /> : <ChevronRight className="ml-auto h-3 w-3" />}
+      </button>
+      {expanded && (
+        <div className="border-t border-border px-3 py-2 space-y-1.5">
+          {items.map((item, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs">
+              {item.status === 'completed' ? (
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+              ) : item.status === 'in-progress' ? (
+                <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-warning" />
+              ) : (
+                <Circle className="mt-0.5 h-3 w-3 shrink-0 text-text-dim" />
+              )}
+              <span className={cn(
+                item.status === 'completed' ? 'text-text-dim line-through' : 'text-text-muted'
+              )}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function MessageContent({ message }: { message: AgentMessage }) {
+  const rawParts = message.metadata?.parts
+  const parts = Array.isArray(rawParts) ? rawParts : []
+  const hasRichParts = parts.length > 0
+
+  return (
+    <div className="mt-0.5 space-y-2">
+      {/* Render thinking parts first */}
+      {hasRichParts && parts.filter((p): p is Extract<MessagePart, { type: 'thinking' }> => p.type === 'thinking').map((p, i) => (
+        <ThinkingBadge key={`think-${i}`} content={p.content} />
+      ))}
+
+      {/* Render text content */}
+      {message.content && (
+        <p className="whitespace-pre-wrap text-sm text-text">{message.content}</p>
+      )}
+
+      {/* Render file operation badges */}
+      {hasRichParts && (() => {
+        const fileParts = parts.filter((p): p is Extract<MessagePart, { type: 'file' }> => p.type === 'file')
+        return fileParts.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {fileParts.map((p, i) => <FileOpBadge key={`file-${i}`} part={p} />)}
+          </div>
+        ) : null
+      })()}
+
+      {/* Render todo lists */}
+      {hasRichParts && parts.filter((p): p is Extract<MessagePart, { type: 'todo-list' }> => p.type === 'todo-list').map((p, i) => (
+        <TodoListBadge key={`todo-${i}`} items={p.items} />
       ))}
     </div>
   )
 }
 
+function ModelSelector({ selectedModel, onModelChange, disabled }: {
+  selectedModel: string
+  onModelChange: (modelId: string) => void
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const current = AI_MODELS.find((m) => m.id === selectedModel) ?? AI_MODELS[0]
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-md border border-border px-2 py-1.5 text-xs text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:opacity-50 disabled:pointer-events-none',
+          open && 'bg-surface-hover text-text'
+        )}
+      >
+        <Cpu className="h-3 w-3 shrink-0" />
+        <span className="max-w-[7rem] truncate">{current.name}</span>
+        <ChevronDown className={cn('h-3 w-3 shrink-0 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <div className="absolute bottom-full left-0 z-50 mb-1 w-64 rounded-lg border border-border bg-surface shadow-lg">
+          <div className="p-1">
+            {AI_MODELS.map((model) => (
+              <button
+                key={model.id}
+                type="button"
+                onClick={() => { onModelChange(model.id); setOpen(false) }}
+                className={cn(
+                  'flex w-full flex-col rounded-md px-3 py-2 text-left transition-colors hover:bg-surface-hover',
+                  model.id === selectedModel && 'bg-primary/10'
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={cn('text-xs font-medium', model.id === selectedModel ? 'text-primary' : 'text-text')}>
+                    {model.name}
+                  </span>
+                  <span className="rounded bg-accent px-1.5 py-0.5 text-[10px] text-text-dim">{model.provider}</span>
+                </div>
+                <p className="mt-0.5 text-[11px] text-text-dim">{model.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChatPanel({ projectId }: { projectId: string }) {
+  const { sessions, isLoading: sessionsLoading, createSession } = useAgentSessions(projectId)
+
+  const initialSessionId = sessions.length > 0 ? sessions[0].id : null
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID)
+  const resolvedSessionId = activeSessionId ?? initialSessionId
+
+  const handleSessionCreated = useCallback((id: string, message: string) => {
+    setActiveSessionId(id)
+    setPendingMessage(message)
+  }, [])
+
+  if (sessionsLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-text-dim" />
+      </div>
+    )
+  }
+
+  if (!resolvedSessionId) {
+    return <ChatEmptyState onSessionCreated={handleSessionCreated} createSession={createSession} selectedModel={selectedModel} onModelChange={setSelectedModel} />
+  }
+
+  return <ChatSession projectId={projectId} sessionId={resolvedSessionId} pendingMessage={pendingMessage} onPendingMessageSent={() => setPendingMessage(null)} selectedModel={selectedModel} onModelChange={setSelectedModel} />
+}
+
+function ChatEmptyState({ onSessionCreated, createSession, selectedModel, onModelChange }: {
+  onSessionCreated: (id: string, message: string) => void
+  createSession: () => Promise<{ id: string }>
+  selectedModel: string
+  onModelChange: (modelId: string) => void
+}) {
+  const [input, setInput] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+
+  const handleSend = async () => {
+    const trimmed = input.trim()
+    if (!trimmed || isCreating) return
+    setIsCreating(true)
+    try {
+      const session = await createSession()
+      onSessionCreated(session.id, trimmed)
+    } catch {
+      setIsCreating(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="mb-3 rounded-xl bg-primary/10 p-3">
+            <MessageSquare className="h-6 w-6 text-primary" />
+          </div>
+          <p className="text-sm font-medium text-text">Start a conversation</p>
+          <p className="mt-1 text-xs text-text-dim">
+            Describe what you want to build and the AI agent will help you create it.
+          </p>
+        </div>
+      </div>
+      <div className="border-t border-border p-3">
+        <div className="flex items-center gap-2">
+          <ModelSelector selectedModel={selectedModel} onModelChange={onModelChange} disabled={isCreating} />
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="Describe your plugin idea..."
+            disabled={isCreating}
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-dim focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isCreating}
+            className="rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function ChatSession({ projectId, sessionId, pendingMessage, onPendingMessageSent, selectedModel, onModelChange }: { projectId: string; sessionId: string; pendingMessage?: string | null; onPendingMessageSent?: () => void; selectedModel: string; onModelChange: (modelId: string) => void }) {
+  const { session, messages, isLoading, sendMessage, isSending, sendError } = useAgentSession(projectId, sessionId)
+  const [input, setInput] = useState('')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const pendingSentRef = useRef(false)
+
+  useEffect(() => {
+    if (pendingMessage && !pendingSentRef.current) {
+      pendingSentRef.current = true
+      void sendMessage({ content: pendingMessage, model: selectedModel })
+      onPendingMessageSent?.()
+    }
+  }, [pendingMessage, sendMessage, onPendingMessageSent, selectedModel])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  const handleSend = useCallback(async () => {
+    const trimmed = input.trim()
+    if (!trimmed || isSending) return
+    setInput('')
+    await sendMessage({ content: trimmed, model: selectedModel })
+  }, [input, isSending, sendMessage, selectedModel])
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-text-dim" />
+      </div>
+    )
+  }
+
+  const statusColor =
+    session?.status === 'running' ? 'text-warning' :
+    session?.status === 'completed' ? 'text-success' :
+    session?.status === 'failed' ? 'text-destructive' :
+    'text-text-dim'
+
+  return (
+    <>
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="mb-3 rounded-xl bg-primary/10 p-3">
+              <MessageSquare className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-text">Session started</p>
+            <p className="mt-1 text-xs text-text-dim">Send a message to begin.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {messages.map((msg) => (
+              <div key={msg.id} className="flex gap-2.5">
+                <div className={cn(
+                  'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                  msg.role === 'user' ? 'bg-primary/10' : 'bg-surface-hover'
+                )}>
+                  {msg.role === 'user'
+                    ? <User className="h-3.5 w-3.5 text-primary" />
+                    : <Bot className="h-3.5 w-3.5 text-text-muted" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-text-muted">
+                    {msg.role === 'user' ? 'You' : msg.role === 'system' ? 'System' : 'AI Agent'}
+                  </p>
+                  <MessageContent message={msg} />
+                </div>
+              </div>
+            ))}
+            {isSending && (
+              <div className="flex gap-2.5">
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-hover">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-text-muted" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-text-muted">AI Agent</p>
+                  <p className="mt-0.5 text-sm text-text-dim">Processing...</p>
+                </div>
+              </div>
+            )}
+            {!isSending && session?.status === 'running' && (
+              <div className="flex gap-2.5">
+                <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-text-muted">AI Agent</p>
+                  <p className="mt-0.5 text-sm text-text-dim">Working on your request...</p>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+      <div className="border-t border-border p-3">
+        {sendError && (
+          <div className="mb-2 flex items-center gap-1.5 text-xs text-destructive">
+            <AlertCircle className="h-3 w-3" />
+            <span>Failed to send message. Try again.</span>
+          </div>
+        )}
+        {session && session.status !== 'idle' && session.status !== 'running' && (
+          <div className="mb-2 flex items-center gap-1.5 text-xs">
+            <AlertCircle className={cn('h-3 w-3', statusColor)} />
+            <span className={statusColor}>Session {session.status}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <ModelSelector selectedModel={selectedModel} onModelChange={onModelChange} disabled={isSending || session?.status === 'running'} />
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            placeholder="Describe your plugin idea..."
+            disabled={isSending}
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-dim focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+          />
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || isSending}
+            className="rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50"
+          >
+            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export default function WorkspacePage() {
-  const [chatMessage, setChatMessage] = useState('')
-  const [isPublic, setIsPublic] = useState(true)
+  const { projectId } = useParams<{ projectId: string }>()
+  const { project, isLoading } = useProject(projectId ?? '')
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-text-muted">Loading workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!project) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center bg-background">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="mt-3 text-sm text-text-muted">Project not found</p>
+        <Link to="/dashboard" className="mt-4 text-sm font-medium text-primary hover:text-primary-hover">
+          Back to dashboard
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -105,8 +478,9 @@ export default function WorkspacePage() {
           <Link to="/dashboard" className="text-text-dim hover:text-text-muted">
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <span className="text-sm font-medium text-text">EconomyPlus</span>
-          <span className="rounded bg-accent px-2 py-0.5 text-xs text-text-dim">Paper</span>
+          <span className="text-sm font-medium text-text">{project.name}</span>
+          <span className="rounded bg-accent px-2 py-0.5 text-xs text-text-dim">{project.software}</span>
+          <span className="rounded bg-accent px-2 py-0.5 text-xs text-text-dim">{project.language}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -115,12 +489,6 @@ export default function WorkspacePage() {
           >
             <Play className="h-3 w-3" />
             Compile
-          </button>
-          <button
-            onClick={() => setIsPublic(!isPublic)}
-            className="rounded-md border border-border p-1.5 text-text-dim hover:text-text-muted"
-          >
-            {isPublic ? <Globe className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
           </button>
           <button className="rounded-md border border-border p-1.5 text-text-dim hover:text-text-muted">
             <Settings className="h-4 w-4" />
@@ -135,22 +503,34 @@ export default function WorkspacePage() {
           <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-text-dim">
             Files
           </p>
-          {mockFileTree.map((node) => (
-            <FileTreeNode key={node.name} node={node} />
-          ))}
+          <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+            <FolderOpen className="h-8 w-8 text-text-dim/50" />
+            <p className="mt-3 text-xs text-text-dim">
+              No files yet
+            </p>
+            <p className="mt-1 text-xs text-text-dim/70">
+              Use the AI assistant to generate your plugin code
+            </p>
+          </div>
         </aside>
 
-        {/* Editor */}
+        {/* Editor area — empty state */}
         <main className="flex-1 overflow-hidden">
           <div className="flex h-full flex-col">
             <div className="flex h-9 items-center border-b border-border bg-surface px-4">
-              <div className="flex items-center gap-2 rounded bg-surface-hover px-2 py-1 text-xs text-text-muted">
+              <div className="flex items-center gap-2 text-xs text-text-dim">
                 <File className="h-3 w-3" />
-                Main.java
+                No file selected
               </div>
             </div>
-            <div className="flex flex-1 items-center justify-center bg-background text-sm text-text-dim">
-              Monaco Editor will be loaded here
+            <div className="flex flex-1 flex-col items-center justify-center text-center">
+              <div className="rounded-2xl bg-primary/5 p-4">
+                <File className="h-8 w-8 text-primary/40" />
+              </div>
+              <p className="mt-4 text-sm font-medium text-text-muted">No files to display</p>
+              <p className="mt-1 max-w-xs text-xs text-text-dim">
+                Start a conversation with the AI assistant to generate plugin code for your project.
+              </p>
             </div>
           </div>
         </main>
@@ -161,31 +541,7 @@ export default function WorkspacePage() {
             <MessageSquare className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium text-text">AI Assistant</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="mb-3 rounded-xl bg-primary/10 p-3">
-                <MessageSquare className="h-6 w-6 text-primary" />
-              </div>
-              <p className="text-sm font-medium text-text">Start a conversation</p>
-              <p className="mt-1 text-xs text-text-dim">
-                Describe what you want to build and the AI agent will help you create it.
-              </p>
-            </div>
-          </div>
-          <div className="border-t border-border p-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={chatMessage}
-                onChange={(e) => setChatMessage(e.target.value)}
-                placeholder="Describe your plugin idea..."
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-text placeholder:text-text-dim focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button className="rounded-lg bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary-hover">
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+          <ChatPanel projectId={project.id} />
         </aside>
       </div>
     </div>
